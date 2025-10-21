@@ -17,23 +17,20 @@ class NewCA(CtrlAviary):
         """Add obstacles to the environment.
 
         """
-        p.loadURDF("teddy_vhacd.urdf",
-                   [0, -1, .1],
-                   p.getQuaternionFromEuler([0, 0, 0]),
-                   physicsClientId=self.CLIENT
-                   )
+        # p.loadURDF("teddy_vhacd.urdf",
+        #            [0, -1, .1],
+        #            p.getQuaternionFromEuler([0, 0, 0]),
+        #            physicsClientId=self.CLIENT
+        #            )
 
-        monkey = OBJModel("DisasterDrone/assets/monkey.obj", self.CLIENT)
-        monkey.loadObj(self.CLIENT, pos=[2, 2, 2])
+        # monkey = OBJModel("DisasterDrone/assets/monkey.obj", self.CLIENT)
+        # monkey.loadObj(self.CLIENT, pos=[2, 2, 2])
 
-        block = OBJModel("DisasterDrone/assets/block.obj", self.CLIENT)
-        block.loadObj(self.CLIENT, pos=[1, 2, 2])
+        # block = OBJModel("DisasterDrone/assets/block.obj", self.CLIENT)
+        # block.loadObj(self.CLIENT, pos=[1, 2, 2])
 
-        building = OBJModel("DisasterDrone/assets/building.obj", self.CLIENT)
-
-        for j in range (0, 20, 2):
-            for i in range(0, 20, 2):
-                building.loadObj(self.CLIENT, pos=[j, i, 1])
+        building = OBJModel("DisasterDrone/assets/block.obj", self.CLIENT)
+        building.loadObj(self.CLIENT, pos=[0, -2, 1])
 
 
 if __name__ == "__main__":
@@ -41,13 +38,13 @@ if __name__ == "__main__":
     
     H = .1
     H_STEP = .05
-    R = 3 #determines the radius of the circle
+    R = 2 #determines the radius of the circle
 
-    height = 2 #determines the height of the drone
+    height = 0.5 #determines the height of the drone
 
     # oldHeightParam = H+i*H_STEP
 
-    INIT_XYZS = np.array([[R*np.cos((i/6)*2*np.pi+np.pi/2), R*np.sin((i/6)*2*np.pi+np.pi/2)-R, height] for i in range(num_drones)])
+    INIT_XYZS = np.array([[R*np.cos((i/6)*2*np.pi+np.pi/2) , R*np.sin((i/6)*2*np.pi+np.pi/2)-R, height] for i in range(num_drones)])
     INIT_RPYS = np.array([[0, 0,  i * (np.pi/2)/num_drones] for i in range(num_drones)])
 
     #Number of Waypoints: Determines how many waypoints the trajectory is split into

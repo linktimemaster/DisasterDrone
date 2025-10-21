@@ -6,7 +6,7 @@ import random
 
 class OBJModel():
 
-    def __init__(self, path, physicsClientId, color = [1, 1, 1, 1], specColor = [0.4, .4, 0], shift = [0, -0.02, 0], meshScale = [0.1, 0.1, 0.1]):
+    def __init__(self, path, physicsClientId, color = [1, 1, 1, 1], specColor = [0.4, .4, 0], shift = [0, -0.02, 0], meshScale = [1, 1, 1]):
         
         self.visualShapeId = p.createVisualShape(shapeType=p.GEOM_MESH,
                                     fileName=path,

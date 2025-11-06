@@ -29,8 +29,8 @@ class NewCA(CtrlAviary):
         # block = OBJModel("DisasterDrone/assets/block.obj", self.CLIENT)
         # block.loadObj(self.CLIENT, pos=[1, 2, 2])
 
-        # building = OBJModel("assets/block.obj", self.CLIENT)
-        # building.loadObj(self.CLIENT, pos=[0, -2, 1])
+        building = OBJModel("assets/BrokenBuilding.obj", self.CLIENT)
+        building.loadObj(self.CLIENT, pos=[5, -1, 5])
 
 
 def line(tidx, start=(0,0,0), end=(1,1,0)):

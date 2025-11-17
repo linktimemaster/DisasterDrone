@@ -41,11 +41,30 @@ class NewCA(CtrlAviary):
         # monkey = OBJModel("DisasterDrone/assets/monkey.obj", self.CLIENT)
         # monkey.loadObj(self.CLIENT, pos=[2, 2, 2])
 
-        # block = OBJModel("DisasterDrone/assets/block.obj", self.CLIENT)
-        # block.loadObj(self.CLIENT, pos=[1, 2, 2])
+        SF = 0.5
+        buildDist = 5
+        earthquakeRadius = 30
+        scale = [SF, SF, SF]
+        color_gray = [0.74, 0.74, 0.74, 1]
 
-        building = OBJModel("../assets/BrokenBuilding.obj", self.CLIENT)
-        building.loadObj(self.CLIENT, pos=[5, -1, 5])
+
+        normalBuilding = OBJModel("DisasterDrone/assets/building.obj", self.CLIENT, meshScale=scale, color=color_gray)
+        brokenBuilding = OBJModel("DisasterDrone/assets/building_broken.obj", self.CLIENT, meshScale=scale, color=color_gray)
+
+        for i in range(-15, 15):
+            for j in range(-15, 15):
+
+                if not (i == 0 and j == 0):
+
+                    x_pos = i * buildDist
+                    y_pos = j * buildDist
+
+                    dist = math.sqrt(math.pow(x_pos, 2) + math.pow(y_pos, 2))
+
+                    if dist < earthquakeRadius:
+                        brokenBuilding.loadObj(self.CLIENT, pos=[x_pos, y_pos, 2], ori=[1, 0, 0, 1])
+                    else:
+                        normalBuilding.loadObj(self.CLIENT, pos=[x_pos, y_pos, 2], ori=[1, 0, 0, 1])
 
 
 def line(tidx, start=(0,0,0), end=(1,1,0)):
@@ -57,7 +76,46 @@ def arc(tidx, center=(0, 0, 0), R=1.0, theta_start=0, theta_end=np.pi/2, z=0.5):
     x = center[0] + R * np.cos(angle)
     y = center[1] + R * np.sin(angle)
     return np.array([x,y,z])
-     
+
+def take_image(client):
+    drone_pos, drone_quat = p.getBasePositionAndOrientation(
+                                                            env.DRONE_IDS[0],
+                                                            physicsClientId=client
+                                                        )
+    rotation_mat = np.array(p.getMatrixFromQuaternion(drone_quat)).reshape(3, 3)
+
+    camera_forward = rotation_mat[:, 0]
+    camera_up = rotation_mat[:, 2]
+
+    img_target = drone_pos + 0.5 * camera_forward
+    
+    view_matrix = p.computeViewMatrix(
+                                      cameraEyePosition=drone_pos,
+                                      cameraTargetPosition=img_target,
+                                      cameraUpVector=camera_up,
+                                      physicsClientId=client
+                                  )
+    projection_matrix = p.computeProjectionMatrixFOV(
+                                                     fov=60,
+                                                     aspect=16/9,
+                                                     nearVal=0.1,
+                                                     farVal=100
+                                                 )
+    width, height = 1280, 720
+    img_arr = p.getCameraImage(
+                               width=width,
+                               height=height,
+                               viewMatrix=view_matrix,
+                               projectionMatrix=projection_matrix,
+                               renderer=p.ER_TINY_RENDERER,
+                               physicsClientId=client
+                           )
+    rgb = np.reshape(np.uint8(img_arr[2]), (height, width, 4))[:, :, :3]
+
+    from PIL import Image
+    image = Image.fromarray(rgb)
+    image.save("final_drone_view.png")
+
 if __name__ == "__main__":
     num_drones = 1
     
@@ -96,16 +154,16 @@ if __name__ == "__main__":
     for i in range(WP_ARC):
         tidx = i / WP_ARC
         TARGET_POS[WP_UP + i, :] = arc(tidx, center=(1,1,1), R=1.0, theta_start=np.pi, theta_end=0, z=1)
-        TARGET_YAW[WP_UP+i] = yaw_from_direction(Direction.E)
+        TARGET_YAW[WP_UP + i] = yaw_from_direction(Direction.E)
     pos = TARGET_POS[WP_UP + WP_ARC - 1, :]
     for i in range(WP_LINE):
         tidx = i / WP_LINE
         TARGET_POS[WP_UP + WP_ARC + i, :] = line(tidx, start=pos, end=(1,1,1))
-        TARGET_YAW[WP_UP+WP_ARC+i] = yaw_from_direction(Direction.W)
+        TARGET_YAW[WP_UP + WP_ARC + i] = yaw_from_direction(Direction.W)
     for i in range(WP_BLINE):
         tidx = i/WP_BLINE
-        TARGET_POS[NUM_WP-WP_BLINE+i, :] = line(tidx, start=(1,1,1), end=(5,2,1))
-        TARGET_YAW[NUM_WP-WP_BLINE+i] = yaw_from_direction(Direction.W)
+        TARGET_POS[NUM_WP - WP_BLINE + i, :] = line(tidx, start=(1,1,1), end=(5,2,1))
+        TARGET_YAW[NUM_WP - WP_BLINE + i] = yaw_from_direction(Direction.W)
 
     # for i in range(NUM_WP):
     #     TARGET_POS[i, :] = R*np.cos((i/NUM_WP)*(2*np.pi)+np.pi/2)+INIT_XYZS[0, 0], R*np.sin((i/NUM_WP)*(2*np.pi)+np.pi/2)-R+INIT_XYZS[0, 1], height
@@ -144,53 +202,12 @@ if __name__ == "__main__":
             target_rpy=np.array([0, 0, t_yaw])
         )
 
-        # monkey.loadObj(PYB_CLIENT)
-
-        # Summons infinite Ducks
-        # if i/env.CTRL_FREQ>5 and i%10==0 and i/env.CTRL_FREQ<10: monkey.loadObj(PYB_CLIENT, pos = [0+random.gauss(0, 0.3),-0.5+random.gauss(0, 0.3),3])
-
         wp_counters[0] = wp_counters[0] + 1 if wp_counters[0] < (NUM_WP-1) else NUM_WP - 1
 
         env.render()
 
         sync(i, START, env.CTRL_TIMESTEP)
 
-    drone_pos, drone_quat = p.getBasePositionAndOrientation(
-                                                            env.DRONE_IDS[0],
-                                                            physicsClientId=PYB_CLIENT
-                                                        )
-    rotation_mat = np.array(p.getMatrixFromQuaternion(drone_quat)).reshape(3, 3)
-
-    camera_forward = rotation_mat[:, 0]
-    camera_up = rotation_mat[:, 2]
-
-    img_target = drone_pos + 0.5 * camera_forward
-    
-    view_matrix = p.computeViewMatrix(
-                                      cameraEyePosition=drone_pos,
-                                      cameraTargetPosition=img_target,
-                                      cameraUpVector=camera_up,
-                                      physicsClientId=PYB_CLIENT
-                                  )
-    projection_matrix = p.computeProjectionMatrixFOV(
-                                                     fov=60,
-                                                     aspect=16/9,
-                                                     nearVal=0.1,
-                                                     farVal=100
-                                                 )
-    width, height = 1280, 720
-    img_arr = p.getCameraImage(
-                               width=width,
-                               height=height,
-                               viewMatrix=view_matrix,
-                               projectionMatrix=projection_matrix,
-                               renderer=p.ER_TINY_RENDERER,
-                               physicsClientId=PYB_CLIENT
-                           )
-    rgb = np.reshape(np.uint8(img_arr[2]), (height, width, 4))[:, :, :3]
-
-    from PIL import Image
-    image = Image.fromarray(rgb)
-    image.save("final_drone_view.png")
+    take_image(PYB_CLIENT)
 
     env.close()

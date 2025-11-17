@@ -22,12 +22,13 @@ class OBJModel():
                                           meshScale=meshScale,
                                           physicsClientId=physicsClientId)
 
-    def loadObj(self, physicsClientId, pos = [1, 1, 1], inertialPos = [0, 0, 0], mass = 1):
+    def loadObj(self, physicsClientId, pos = [1, 1, 1], inertialPos = [0, 0, 0], ori = [0, 0, 0, 1], mass = 1):
         return p.createMultiBody(baseMass=mass,
                             baseInertialFramePosition=inertialPos,
                             baseCollisionShapeIndex=self.collisionShapeId,
                             baseVisualShapeIndex=self.visualShapeId,
                             basePosition = pos,
+                            baseOrientation = ori,
                             useMaximalCoordinates=True,
                             physicsClientId=physicsClientId)
         

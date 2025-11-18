@@ -77,7 +77,7 @@ def arc(tidx, center=(0, 0, 0), R=1.0, theta_start=0, theta_end=np.pi/2, z=0.5):
     y = center[1] + R * np.sin(angle)
     return np.array([x,y,z])
 
-def take_image(client):
+def take_image(client, index):
     drone_pos, drone_quat = p.getBasePositionAndOrientation(
                                                             env.DRONE_IDS[0],
                                                             physicsClientId=client
@@ -114,7 +114,7 @@ def take_image(client):
 
     from PIL import Image
     image = Image.fromarray(rgb)
-    image.save("final_drone_view.png")
+    image.save(f"normal_building_{int(index)}.png")
 
 if __name__ == "__main__":
     num_drones = 1
@@ -139,31 +139,50 @@ if __name__ == "__main__":
 
 
     WP_UP = DEFAULT_CONTROL_FREQ_HZ * 3
-    WP_ARC = DEFAULT_CONTROL_FREQ_HZ * 6
-    WP_LINE = DEFAULT_CONTROL_FREQ_HZ * 3
-    WP_BLINE = DEFAULT_CONTROL_FREQ_HZ * 3
-    NUM_WP = WP_UP + WP_ARC + WP_LINE + WP_BLINE
+    WP_BLINE = DEFAULT_CONTROL_FREQ_HZ * 6
+    WP_ARC = DEFAULT_CONTROL_FREQ_HZ * 20
+
+    # WP_LINE = DEFAULT_CONTROL_FREQ_HZ * 3
+
+    # NUM_WP = WP_UP + WP_ARC + WP_LINE + WP_BLINE
+
+    NUM_WP = WP_UP + WP_BLINE + WP_ARC + WP_ARC
+
+    #Sprial Building Trajectory
 
     TARGET_POS = np.zeros((NUM_WP,3))
     TARGET_YAW = np.zeros(NUM_WP)
 
     for i in range(WP_UP):
         tidx = i / WP_UP
-        TARGET_POS[i,:] = line(tidx, start=(0,0,0), end=(0,1,1))
+        TARGET_POS[i,:] = line(tidx, start=(0,0,0), end=(0,2,1))
         TARGET_YAW[i] = yaw_from_direction(Direction.N)
-    for i in range(WP_ARC):
-        tidx = i / WP_ARC
-        TARGET_POS[WP_UP + i, :] = arc(tidx, center=(1,1,1), R=1.0, theta_start=np.pi, theta_end=0, z=1)
-        TARGET_YAW[WP_UP + i] = yaw_from_direction(Direction.E)
-    pos = TARGET_POS[WP_UP + WP_ARC - 1, :]
-    for i in range(WP_LINE):
-        tidx = i / WP_LINE
-        TARGET_POS[WP_UP + WP_ARC + i, :] = line(tidx, start=pos, end=(1,1,1))
-        TARGET_YAW[WP_UP + WP_ARC + i] = yaw_from_direction(Direction.W)
+
     for i in range(WP_BLINE):
         tidx = i/WP_BLINE
-        TARGET_POS[NUM_WP - WP_BLINE + i, :] = line(tidx, start=(1,1,1), end=(5,2,1))
-        TARGET_YAW[NUM_WP - WP_BLINE + i] = yaw_from_direction(Direction.W)
+        TARGET_POS[WP_UP + i, :] = line(tidx, start=(0,2,1), end=(5,2,1))
+        TARGET_YAW[WP_UP + i] = yaw_from_direction(Direction.W)
+    
+    for i in range(WP_ARC):
+        tidx = i / WP_ARC
+        TARGET_POS[WP_BLINE + WP_UP + i, :] = arc(tidx, center=(5,0,1), R=2.0, theta_start=np.pi/2, theta_end=-2*np.pi, z= (1 + (2/WP_ARC)*i))
+        TARGET_YAW[WP_BLINE + WP_UP + i] = 3*(np.pi/2) + ((-(5/2)*np.pi)/WP_ARC)*i
+
+    pos = TARGET_POS[WP_BLINE + WP_UP + WP_ARC - 1, :]
+    
+    for i in range(WP_ARC):
+        tidx = i / WP_ARC
+        TARGET_POS[WP_BLINE + WP_UP + WP_ARC + i, :] = arc(tidx, center=(5,0,1), R=2.0, theta_start=0, theta_end=-(3 * np.pi)/2, z= (3 - (2/WP_ARC)*i))
+        TARGET_YAW[WP_BLINE + WP_UP + WP_ARC + i] = np.pi + ((-(3/2)*np.pi)/WP_ARC)*i
+
+
+    
+    
+    # for i in range(WP_LINE):
+    #     tidx = i / WP_LINE
+    #     TARGET_POS[WP_UP + WP_ARC + i, :] = line(tidx, start=pos, end=(1,1,1))
+    #     TARGET_YAW[WP_UP + WP_ARC + i] = yaw_from_direction(Direction.W)
+   
 
     # for i in range(NUM_WP):
     #     TARGET_POS[i, :] = R*np.cos((i/NUM_WP)*(2*np.pi)+np.pi/2)+INIT_XYZS[0, 0], R*np.sin((i/NUM_WP)*(2*np.pi)+np.pi/2)-R+INIT_XYZS[0, 1], height
@@ -190,7 +209,7 @@ if __name__ == "__main__":
 
     wp_counters = np.zeros(num_drones, dtype=int)
     
-    for i in range(0, int(45*env.CTRL_FREQ)):
+    for i in range(0, int(50*env.CTRL_FREQ)):
         obs, reward, terminated, truncated, info = env.step(action)
 
         t_yaw = TARGET_YAW[wp_counters[0]]
@@ -202,12 +221,17 @@ if __name__ == "__main__":
             target_rpy=np.array([0, 0, t_yaw])
         )
 
+        if wp_counters[0] >= (WP_UP + WP_BLINE):
+            count = wp_counters - (WP_UP + WP_BLINE)
+            total = NUM_WP - (WP_UP + WP_BLINE)
+
+            if (((count/total)*100) % 5) == 0:
+                take_image(PYB_CLIENT, ((count/total)*100) / 5)
+
         wp_counters[0] = wp_counters[0] + 1 if wp_counters[0] < (NUM_WP-1) else NUM_WP - 1
 
         env.render()
 
         sync(i, START, env.CTRL_TIMESTEP)
-
-    take_image(PYB_CLIENT)
 
     env.close()

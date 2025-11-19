@@ -48,8 +48,8 @@ class NewCA(CtrlAviary):
         color_gray = [0.74, 0.74, 0.74, 1]
 
 
-        normalBuilding = OBJModel("DisasterDrone/assets/building.obj", self.CLIENT, meshScale=scale, color=color_gray)
-        brokenBuilding = OBJModel("DisasterDrone/assets/building_broken.obj", self.CLIENT, meshScale=scale, color=color_gray)
+        normalBuilding = OBJModel("assets/building.obj", self.CLIENT, meshScale=scale, color=color_gray)
+        brokenBuilding = OBJModel("assets/building_broken.obj", self.CLIENT, meshScale=scale, color=color_gray)
 
         for i in range(-15, 15):
             for j in range(-15, 15):
@@ -62,7 +62,9 @@ class NewCA(CtrlAviary):
                     dist = math.sqrt(math.pow(x_pos, 2) + math.pow(y_pos, 2))
 
                     if dist < earthquakeRadius:
-                        brokenBuilding.loadObj(self.CLIENT, pos=[x_pos, y_pos, 2], ori=[1, 0, 0, 1])
+                        texUid = p.loadTexture("rick.png")
+                        bodyUid = brokenBuilding.loadObj(self.CLIENT, pos=[x_pos, y_pos, 2], ori=[1, 0, 0, 1])
+                        p.changeVisualShape(bodyUid, -1, textureUniqueId=texUid)
                     else:
                         normalBuilding.loadObj(self.CLIENT, pos=[x_pos, y_pos, 2], ori=[1, 0, 0, 1])
 
@@ -101,7 +103,7 @@ def take_image(client, index):
                                                      nearVal=0.1,
                                                      farVal=100
                                                  )
-    width, height = 1280, 720
+    width, height = 32, 32
     img_arr = p.getCameraImage(
                                width=width,
                                height=height,
@@ -114,7 +116,7 @@ def take_image(client, index):
 
     from PIL import Image
     image = Image.fromarray(rgb)
-    image.save(f"normal_building_{int(index)}.png")
+    image.save(f"building_images/normal_building_images/normal_building_{int(index)}.png")
 
 if __name__ == "__main__":
     num_drones = 1
@@ -225,8 +227,8 @@ if __name__ == "__main__":
             count = wp_counters - (WP_UP + WP_BLINE)
             total = NUM_WP - (WP_UP + WP_BLINE)
 
-            if (((count/total)*100) % 5) == 0:
-                take_image(PYB_CLIENT, ((count/total)*100) / 5)
+            # if not count % 10 :
+            #     take_image(PYB_CLIENT, count/10)
 
         wp_counters[0] = wp_counters[0] + 1 if wp_counters[0] < (NUM_WP-1) else NUM_WP - 1
 

@@ -5,9 +5,8 @@ import os
 import glob
 import matplotlib.pyplot as plt
 
-
-base_model_MNv3 = applications.MobileNetV3Small(input_shape=(32,32,3), include_top=False, weights='imagenet')
-input = tf.keras.Input(shape=(32,32,3), name='input')
+base_model_MNv3 = applications.MobileNetV3Small(input_shape=(192,192,3), include_top=False, weights='imagenet', dropout_rate=.1)
+input = tf.keras.Input(shape=(192,192,3), name='input')
 x = base_model_MNv3(input, training=False)
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
 output = tf.keras.layers.Dense(2)(x)
@@ -28,12 +27,13 @@ broken_set = [(process_image(i), 1) for i in broken_paths]
 np.random.shuffle(normal_set)
 np.random.shuffle(broken_set)
 
-split = 100
+split = 25
+split2 = 5
 
-train_x = np.array([i[0] for i in normal_set[:split]] + [i[0] for i in broken_set[:split]])
-train_y = np.array([i[1] for i in normal_set[:split]] + [i[1] for i in broken_set[:split]])
-val_x = np.array([i[0] for i in normal_set[split:]] + [i[0] for i in broken_set[split:]])
-val_y = np.array([i[1] for i in normal_set[split:]] + [i[1] for i in broken_set[split:]])
+train_x = np.array([i[0] for i in normal_set[:split]] + [i[0] for i in broken_set[:split2]])
+train_y = np.array([i[1] for i in normal_set[:split]] + [i[1] for i in broken_set[:split2]])
+val_x = np.array([i[0] for i in normal_set[split:]] + [i[0] for i in broken_set[split2:]])
+val_y = np.array([i[1] for i in normal_set[split:]] + [i[1] for i in broken_set[split2:]])
 
 model_MNv3.compile(optimizer=optimizers.Adam(learning_rate=0.001),
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
@@ -42,12 +42,12 @@ model_MNv3.compile(optimizer=optimizers.Adam(learning_rate=0.001),
 finetune_model_MNv3 = model_MNv3.fit(train_x, train_y, epochs=10,
                     validation_data=(val_x, val_y))
 
-plt.plot(finetune_model_MNv3.history['accuracy'], label='accuracy')
-plt.plot(finetune_model_MNv3.history['val_accuracy'], label = 'val_accuracy')
-plt.xlabel('Epoch')
-plt.ylabel('Accuracy')
-plt.ylim([0, 1])
-plt.legend(loc='lower right')
+# plt.plot(finetune_model_MNv3.history['accuracy'], label='accuracy')
+# plt.plot(finetune_model_MNv3.history['val_accuracy'], label = 'val_accuracy')
+# plt.xlabel('Epoch')
+# plt.ylabel('Accuracy')
+# plt.ylim([0, 1])
+# plt.legend(loc='lower right')
 
 MNv3_test_loss, MNv3_test_acc = model_MNv3.evaluate(val_x,  val_y, verbose=2)
 
@@ -57,12 +57,13 @@ plt.show()
 np.random.shuffle(normal_set)
 np.random.shuffle(broken_set)
 
-split = 33
+split = 25
+split2 = 5
 
-train_x = np.array([i[0] for i in normal_set[:split]] + [i[0] for i in broken_set[:split]])
-train_y = np.array([i[1] for i in normal_set[:split]] + [i[1] for i in broken_set[:split]])
-val_x = np.array([i[0] for i in normal_set[split:]] + [i[0] for i in broken_set[split:]])
-val_y = np.array([i[1] for i in normal_set[split:]] + [i[1] for i in broken_set[split:]])
+train_x = np.array([i[0] for i in normal_set[:split]] + [i[0] for i in broken_set[:split2]])
+train_y = np.array([i[1] for i in normal_set[:split]] + [i[1] for i in broken_set[:split2]])
+val_x = np.array([i[0] for i in normal_set[split:]] + [i[0] for i in broken_set[split2:]])
+val_y = np.array([i[1] for i in normal_set[split:]] + [i[1] for i in broken_set[split2:]])
 
 bm = model_MNv3.layers[1]
 for layer in bm.layers[-min(len(bm.layers), 92):]:
@@ -97,6 +98,9 @@ finetune_model_MNv3_3 = model_MNv3.fit(train_x, train_y, epochs=10,
 MNv3_test_loss, MNv3_test_acc = model_MNv3.evaluate(val_x,  val_y, verbose=2)
 print(f'tune3 acc = {MNv3_test_acc}')
 
+
+model_MNv3.save("Models/building_recognizer.keras")
+
 plt.plot(finetune_model_MNv3_3.history['accuracy'], label='accuracy')
 plt.plot(finetune_model_MNv3_3.history['val_accuracy'], label = 'val_accuracy')
 plt.xlabel('Epoch')
@@ -107,13 +111,13 @@ plt.show()
 
 class_names = ["normal", "broken"]
 
-predict = model_MNv3.predict(tf.reshape(normal_set[5][0], (1, 32, 32, 3)))
+predict = model_MNv3.predict(tf.reshape(normal_set[5][0], (1, 192, 192, 3)))
 score = tf.nn.softmax(predict[0])
 print(predict)
 print(score)
 print(class_names[np.argmax(score)], 100 * np.max(score))
 
-predict = model_MNv3.predict(tf.reshape(broken_set[10][0], (1, 32, 32, 3)))
+predict = model_MNv3.predict(tf.reshape(broken_set[2][0], (1, 192, 192, 3)))
 score = tf.nn.softmax(predict[0])
 print(predict)
 print(score)

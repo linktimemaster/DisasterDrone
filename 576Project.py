@@ -7,6 +7,10 @@ from load_obj import OBJModel
 from enum import Enum
 import math
 
+import tensorflow as tf
+import numpy as np
+from tensorflow.keras import models
+
 from gym_pybullet_drones.utils.enums import DroneModel, Physics, ActionType, ObservationType, ImageType
 from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
@@ -43,7 +47,7 @@ class NewCA(CtrlAviary):
 
         SF = 0.5
         buildDist = 5
-        earthquakeRadius = 30
+        earthquakeRadius = 10
         scale = [SF, SF, SF]
         color_gray = [0.74, 0.74, 0.74, 1]
 
@@ -51,8 +55,8 @@ class NewCA(CtrlAviary):
         normalBuilding = OBJModel("assets/building.obj", self.CLIENT, meshScale=scale, color=color_gray)
         brokenBuilding = OBJModel("assets/building_broken.obj", self.CLIENT, meshScale=scale, color=color_gray)
 
-        for i in range(-15, 15):
-            for j in range(-15, 15):
+        for i in range(-3, 4):
+            for j in range(-3, 4):
 
                 if not (i == 0 and j == 0):
 
@@ -62,9 +66,9 @@ class NewCA(CtrlAviary):
                     dist = math.sqrt(math.pow(x_pos, 2) + math.pow(y_pos, 2))
 
                     if dist < earthquakeRadius:
-                        texUid = p.loadTexture("rick.png")
-                        bodyUid = brokenBuilding.loadObj(self.CLIENT, pos=[x_pos, y_pos, 2], ori=[1, 0, 0, 1])
-                        p.changeVisualShape(bodyUid, -1, textureUniqueId=texUid)
+                        # texUid = p.loadTexture("rick.png")
+                        brokenBuilding.loadObj(self.CLIENT, pos=[x_pos, y_pos, 2], ori=[1, 0, 0, 1])
+                        # p.changeVisualShape(bodyUid, -1, textureUniqueId=texUid)
                     else:
                         normalBuilding.loadObj(self.CLIENT, pos=[x_pos, y_pos, 2], ori=[1, 0, 0, 1])
 
@@ -89,7 +93,7 @@ def take_image(client, index):
     camera_forward = rotation_mat[:, 0]
     camera_up = rotation_mat[:, 2]
 
-    img_target = drone_pos + 0.5 * camera_forward
+    img_target = drone_pos + -1 * camera_up
     
     view_matrix = p.computeViewMatrix(
                                       cameraEyePosition=drone_pos,
@@ -103,7 +107,7 @@ def take_image(client, index):
                                                      nearVal=0.1,
                                                      farVal=100
                                                  )
-    width, height = 32, 32
+    width, height = 192, 192
     img_arr = p.getCameraImage(
                                width=width,
                                height=height,
@@ -113,12 +117,16 @@ def take_image(client, index):
                                physicsClientId=client
                            )
     rgb = np.reshape(np.uint8(img_arr[2]), (height, width, 4))[:, :, :3]
-
+    # return rgb
     from PIL import Image
     image = Image.fromarray(rgb)
-    image.save(f"building_images/normal_building_images/normal_building_{int(index)}.png")
+    image.save(f"img_{int(index)}.png")
 
 if __name__ == "__main__":
+
+    class_names = ["normal", "broken"]
+    building_recognizer = tf.keras.models.load_model('Models/building_recognizer.keras')
+
     num_drones = 1
     
     H = .1
@@ -141,44 +149,142 @@ if __name__ == "__main__":
 
 
     WP_UP = DEFAULT_CONTROL_FREQ_HZ * 3
-    WP_BLINE = DEFAULT_CONTROL_FREQ_HZ * 6
+    WP_LINE = DEFAULT_CONTROL_FREQ_HZ * 6
+    WP_BLINE = DEFAULT_CONTROL_FREQ_HZ * 15
     WP_ARC = DEFAULT_CONTROL_FREQ_HZ * 20
 
     # WP_LINE = DEFAULT_CONTROL_FREQ_HZ * 3
 
-    # NUM_WP = WP_UP + WP_ARC + WP_LINE + WP_BLINE
+    # NUM_WP = WP_UP + WP_BLINE + WP_ARC + WP_ARC
 
-    NUM_WP = WP_UP + WP_BLINE + WP_ARC + WP_ARC
-
-    #Sprial Building Trajectory
+    NUM_WP = WP_UP + WP_BLINE + (WP_LINE * 7) * 7
 
     TARGET_POS = np.zeros((NUM_WP,3))
     TARGET_YAW = np.zeros(NUM_WP)
 
+    #fly overhead
+
     for i in range(WP_UP):
         tidx = i / WP_UP
-        TARGET_POS[i,:] = line(tidx, start=(0,0,0), end=(0,2,1))
+        TARGET_POS[i,:] = line(tidx, start=(0,0,0), end=(0,0,6))
         TARGET_YAW[i] = yaw_from_direction(Direction.N)
 
     for i in range(WP_BLINE):
         tidx = i/WP_BLINE
-        TARGET_POS[WP_UP + i, :] = line(tidx, start=(0,2,1), end=(5,2,1))
-        TARGET_YAW[WP_UP + i] = yaw_from_direction(Direction.W)
-    
-    for i in range(WP_ARC):
-        tidx = i / WP_ARC
-        TARGET_POS[WP_BLINE + WP_UP + i, :] = arc(tidx, center=(5,0,1), R=2.0, theta_start=np.pi/2, theta_end=-2*np.pi, z= (1 + (2/WP_ARC)*i))
-        TARGET_YAW[WP_BLINE + WP_UP + i] = 3*(np.pi/2) + ((-(5/2)*np.pi)/WP_ARC)*i
-
-    pos = TARGET_POS[WP_BLINE + WP_UP + WP_ARC - 1, :]
-    
-    for i in range(WP_ARC):
-        tidx = i / WP_ARC
-        TARGET_POS[WP_BLINE + WP_UP + WP_ARC + i, :] = arc(tidx, center=(5,0,1), R=2.0, theta_start=0, theta_end=-(3 * np.pi)/2, z= (3 - (2/WP_ARC)*i))
-        TARGET_YAW[WP_BLINE + WP_UP + WP_ARC + i] = np.pi + ((-(3/2)*np.pi)/WP_ARC)*i
+        TARGET_POS[WP_UP + i, :] = line(tidx, start=(0,0,6), end=(15,15,6))
+        TARGET_YAW[WP_UP + i] = yaw_from_direction(Direction.N)
 
 
+
+    for i in range(WP_LINE*6):
+        tidx = i/(WP_LINE*6)
+        TARGET_POS[WP_UP + WP_BLINE + i, :] = line(tidx, start=(15,15,6), end=(-15,15,6))
+        TARGET_YAW[WP_UP + WP_BLINE + i] = yaw_from_direction(Direction.N)
+    for i in range(WP_LINE):
+        tidx = i/WP_LINE
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*6) + i, :] = line(tidx, start=(-15,15,6), end=(-15,10,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*6) + i] = yaw_from_direction(Direction.N)
+
+
+
+    for i in range(WP_LINE*6):
+        tidx = i/(WP_LINE*6)
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*7)+ i, :] = line(tidx, start=(-15,10,6), end=(15,10,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*7)+ i] = yaw_from_direction(Direction.N)
+    for i in range(WP_LINE):
+        tidx = i/WP_LINE
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*13) + i, :] = line(tidx, start=(15,10,6), end=(15,5,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*13) + i] = yaw_from_direction(Direction.N)
+
+
+
+    for i in range(WP_LINE*6):
+        tidx = i/(WP_LINE*6)
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*14)+ i, :] = line(tidx, start=(15,5,6), end=(-15,5,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*14)+ i] = yaw_from_direction(Direction.N)
+    for i in range(WP_LINE):
+        tidx = i/WP_LINE
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*20) + i, :] = line(tidx, start=(-15,5,6), end=(-15,0,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*20) + i] = yaw_from_direction(Direction.N)
+
+
     
+    for i in range(WP_LINE*6):
+        tidx = i/(WP_LINE*6)
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*21)+ i, :] = line(tidx, start=(-15,0,6), end=(15,0,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*21)+ i] = yaw_from_direction(Direction.N)
+    for i in range(WP_LINE):
+        tidx = i/WP_LINE
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*27) + i, :] = line(tidx, start=(15,0,6), end=(15,-5,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*27) + i] = yaw_from_direction(Direction.N)
+
+
+
+    for i in range(WP_LINE*6):
+        tidx = i/(WP_LINE*6)
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*28)+ i, :] = line(tidx, start=(15,-5,6), end=(-15,-5,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*28)+ i] = yaw_from_direction(Direction.N)
+    for i in range(WP_LINE):
+        tidx = i/WP_LINE
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*34) + i, :] = line(tidx, start=(-15,-5,6), end=(-15,-10,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*34) + i] = yaw_from_direction(Direction.N)
+
+
+    for i in range(WP_LINE*6):
+        tidx = i/(WP_LINE*6)
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*35)+ i, :] = line(tidx, start=(-15,-10,6), end=(15,-10,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*35)+ i] = yaw_from_direction(Direction.N)
+    for i in range(WP_LINE):
+        tidx = i/WP_LINE
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*41) + i, :] = line(tidx, start=(15,-10,6), end=(15,-15,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*41) + i] = yaw_from_direction(Direction.N)
+
+
+    
+    for i in range(WP_LINE*6):
+        tidx = i/(WP_LINE*6)
+        TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*42)+ i, :] = line(tidx, start=(15,-15,6), end=(-15,-15,6))
+        TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*42)+ i] = yaw_from_direction(Direction.N)
+
+    # prev_pos = TARGET_POS[WP_UP+WP_BLINE-1,:]
+    # for k in range(6):
+    #     flip = -1
+    #     if k % 2 == 0:
+    #         flip = 1
+    #     for j in range(6):
+    #         for i in range(WP_LINE):
+    #             tidx = i / WP_LINE
+    #             TARGET_POS[WP_UP+WP_BLINE+(WP_LINE*(j+(k*6))) + i,:] = line(tidx, start=prev_pos, end=np.subtract(prev_pos,(flip*j*5,k*5,0)))
+    #             TARGET_YAW[WP_UP+WP_BLINE+(WP_LINE*(j+(k*6))) + i] = yaw_from_direction(Direction.N)
+    #         prev_pos = TARGET_POS[WP_UP+WP_BLINE + (WP_LINE*(j+(k*6))) + i,:]
+
+
+    #Sprial Building Trajectory
+
+    # for i in range(WP_UP):
+    #     tidx = i / WP_UP
+    #     TARGET_POS[i,:] = line(tidx, start=(0,0,0), end=(0,2,1))
+    #     TARGET_YAW[i] = yaw_from_direction(Direction.N)
+
+    # for i in range(WP_BLINE):
+    #     tidx = i/WP_BLINE
+    #     TARGET_POS[WP_UP + i, :] = line(tidx, start=(0,2,1), end=(5,2,1))
+    #     TARGET_YAW[WP_UP + i] = yaw_from_direction(Direction.W)
+    
+    # for i in range(WP_ARC):
+    #     tidx = i / WP_ARC
+    #     TARGET_POS[WP_BLINE + WP_UP + i, :] = arc(tidx, center=(5,0,1), R=2.0, theta_start=np.pi/2, theta_end=-2*np.pi, z= (1 + (2/WP_ARC)*i))
+    #     TARGET_YAW[WP_BLINE + WP_UP + i] = 3*(np.pi/2) + ((-(5/2)*np.pi)/WP_ARC)*i
+
+    # pos = TARGET_POS[WP_BLINE + WP_UP + WP_ARC - 1, :]
+    
+    # for i in range(WP_ARC):
+    #     tidx = i / WP_ARC
+    #     TARGET_POS[WP_BLINE + WP_UP + WP_ARC + i, :] = arc(tidx, center=(5,0,1), R=2.0, theta_start=0, theta_end=-(3 * np.pi)/2, z= (3 - (2/WP_ARC)*i))
+    #     TARGET_YAW[WP_BLINE + WP_UP + WP_ARC + i] = np.pi + ((-(3/2)*np.pi)/WP_ARC)*i
+
+
+    #circle code
     
     # for i in range(WP_LINE):
     #     tidx = i / WP_LINE
@@ -211,7 +317,7 @@ if __name__ == "__main__":
 
     wp_counters = np.zeros(num_drones, dtype=int)
     
-    for i in range(0, int(50*env.CTRL_FREQ)):
+    for i in range(0, int(500*env.CTRL_FREQ)):
         obs, reward, terminated, truncated, info = env.step(action)
 
         t_yaw = TARGET_YAW[wp_counters[0]]
@@ -227,8 +333,14 @@ if __name__ == "__main__":
             count = wp_counters - (WP_UP + WP_BLINE)
             total = NUM_WP - (WP_UP + WP_BLINE)
 
-            # if not count % 10 :
-            #     take_image(PYB_CLIENT, count/10)
+            if not count % WP_LINE :
+                take_image(PYB_CLIENT, count/WP_LINE)
+                # image = take_image(PYB_CLIENT, count/WP_LINE)
+                # predict = building_recognizer.predict(tf.reshape(image, (1, 192, 192, 3)))
+                # score = tf.nn.softmax(predict[0])
+                # print(predict)
+                # print(score)
+                # print(class_names[np.argmax(score)], 100 * np.max(score))
 
         wp_counters[0] = wp_counters[0] + 1 if wp_counters[0] < (NUM_WP-1) else NUM_WP - 1
 

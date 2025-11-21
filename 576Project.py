@@ -16,6 +16,9 @@ from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
 from gym_pybullet_drones.utils.utils import sync
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 class Direction(Enum):
     N = 0
     NE = 45
@@ -117,10 +120,10 @@ def take_image(client, index):
                                physicsClientId=client
                            )
     rgb = np.reshape(np.uint8(img_arr[2]), (height, width, 4))[:, :, :3]
-    # return rgb
-    from PIL import Image
-    image = Image.fromarray(rgb)
-    image.save(f"img_{int(index)}.png")
+    return rgb
+    # from PIL import Image
+    # image = Image.fromarray(rgb)
+    # image.save(f"img_{int(index)}.png")
 
 if __name__ == "__main__":
 
@@ -316,8 +319,11 @@ if __name__ == "__main__":
     START = time.time()
 
     wp_counters = np.zeros(num_drones, dtype=int)
-    
-    for i in range(0, int(500*env.CTRL_FREQ)):
+
+    heatmap = np.zeros((7,7))
+    othermap = [[""] * 7]*7
+
+    for i in range(0, int(300*env.CTRL_FREQ)):
         obs, reward, terminated, truncated, info = env.step(action)
 
         t_yaw = TARGET_YAW[wp_counters[0]]
@@ -333,19 +339,44 @@ if __name__ == "__main__":
             count = wp_counters - (WP_UP + WP_BLINE)
             total = NUM_WP - (WP_UP + WP_BLINE)
 
-            if not count % WP_LINE :
-                take_image(PYB_CLIENT, count/WP_LINE)
-                # image = take_image(PYB_CLIENT, count/WP_LINE)
-                # predict = building_recognizer.predict(tf.reshape(image, (1, 192, 192, 3)))
-                # score = tf.nn.softmax(predict[0])
-                # print(predict)
-                # print(score)
-                # print(class_names[np.argmax(score)], 100 * np.max(score))
+            if (count % WP_LINE) == 0 :
+                print(f"TargetPos: {TARGET_POS[wp_counters[0], :]}")
+                pos = TARGET_POS[wp_counters[0], :]
+                x = int(int(pos[0])/5) + 3
+                y = int(int(pos[1])/5) + 3
+                # take_image(PYB_CLIENT, count/WP_LINE)
+                image = take_image(PYB_CLIENT, count/WP_LINE)
+
+                # from PIL import Image
+                # saved_image = Image.fromarray(image)
+                # saved_image.save(f"img_{int(count/WP_LINE)}.png")
+
+                predict = building_recognizer.predict(tf.reshape(image, (1, 192, 192, 3)))
+                score = tf.nn.softmax(predict[0])
+                
+                print(predict)
+                print(score)
+                print(class_names[np.argmax(score)], 100 * np.max(score))
+                
+                name = class_names[np.argmax(score)]
+
+                if name == "broken":
+                    heatmap[x][y] = 1
+                    othermap[x][y] = "broken"
+                elif name == "normal":
+                    heatmap[x][y] = 0
+                    othermap[x][y] = "normal"
 
         wp_counters[0] = wp_counters[0] + 1 if wp_counters[0] < (NUM_WP-1) else NUM_WP - 1
 
         env.render()
 
         sync(i, START, env.CTRL_TIMESTEP)
+
+    print(othermap)
+    print(heatmap)
+
+    plt.imshow(heatmap, cmap='hot')
+    plt.show()
 
     env.close()

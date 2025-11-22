@@ -38,7 +38,7 @@ conda activate drones
 ```
 
 ## 4. Run Server and Simulation
-Open two terminals, on the first run the server.py and on the second run the 576Project.py (the simulation). Make sure both files are running through in the **drones** conda environment.
+Open two terminals, on the first run the server.py and on the second run the drone_simulation.py (the simulation). Make sure both files are running through the **drones** conda environment.
 ### If done correctly your screen should look something like this:
 
 <img width="3051" height="1978" alt="image" src="https://github.com/user-attachments/assets/a469c1d8-ee5b-408a-a1d4-b084285d95a9" />

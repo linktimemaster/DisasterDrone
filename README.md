@@ -37,8 +37,21 @@ conda env create -f drones.yml
 conda activate drones
 ```
 
+## 3. Move Files
+
+Move drone_simulation.py and load_obj.py to the gym-pybullet-drones directory 
+
 ## 4. Run Server and Simulation
-Open two terminals, on the first run the server.py and on the second run the drone_simulation.py (the simulation). Make sure both files are running through the **drones** conda environment.
+Open two terminals in the DisasterDrone directory, and make sure both files are running through the **drones** conda environment. 
+
+On the first run server.py:
+
+`conda run -n drones python server.py`
+
+On the second run drone_simulation.py (the simulation):
+
+`conda run -n drones python gym-pybullet-drones/drone_simulation.py`
+
 ### If done correctly your screen should look something like this:
 
 <img width="3051" height="1978" alt="image" src="https://github.com/user-attachments/assets/a469c1d8-ee5b-408a-a1d4-b084285d95a9" />

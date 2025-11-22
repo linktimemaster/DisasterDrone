@@ -6,6 +6,7 @@ import random
 from load_obj import OBJModel
 from enum import Enum
 import math
+import socket
 
 import tensorflow as tf
 import numpy as np
@@ -55,8 +56,8 @@ class NewCA(CtrlAviary):
         color_gray = [0.74, 0.74, 0.74, 1]
 
 
-        normalBuilding = OBJModel("assets/building.obj", self.CLIENT, meshScale=scale, color=color_gray)
-        brokenBuilding = OBJModel("assets/building_broken.obj", self.CLIENT, meshScale=scale, color=color_gray)
+        normalBuilding = OBJModel("../../assets/building.obj", self.CLIENT, meshScale=scale, color=color_gray)
+        brokenBuilding = OBJModel("../../assets/building_broken.obj", self.CLIENT, meshScale=scale, color=color_gray)
 
         for i in range(-3, 4):
             for j in range(-3, 4):
@@ -127,8 +128,13 @@ def take_image(client, index):
 
 if __name__ == "__main__":
 
+    host = "0.0.0.0"
+    port = 8080
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
     class_names = ["normal", "broken"]
-    building_recognizer = tf.keras.models.load_model('Models/building_recognizer.keras')
+    building_recognizer = tf.keras.models.load_model('../../Models/building_recognizer.keras')
 
     num_drones = 1
     
@@ -320,8 +326,7 @@ if __name__ == "__main__":
 
     wp_counters = np.zeros(num_drones, dtype=int)
 
-    heatmap = np.zeros((7,7))
-    othermap = [[""] * 7]*7
+    s.connect((host,port))
 
     for i in range(0, int(300*env.CTRL_FREQ)):
         obs, reward, terminated, truncated, info = env.step(action)
@@ -360,23 +365,16 @@ if __name__ == "__main__":
                 
                 name = class_names[np.argmax(score)]
 
-                if name == "broken":
-                    heatmap[x][y] = 1
-                    othermap[x][y] = "broken"
-                elif name == "normal":
-                    heatmap[x][y] = 0
-                    othermap[x][y] = "normal"
-
+                data = " ".join((name, str(x), str(y)))
+                enc_data = data.encode()
+                s.sendall(enc_data)
+                
         wp_counters[0] = wp_counters[0] + 1 if wp_counters[0] < (NUM_WP-1) else NUM_WP - 1
 
         env.render()
 
         sync(i, START, env.CTRL_TIMESTEP)
 
-    print(othermap)
-    print(heatmap)
-
-    plt.imshow(heatmap, cmap='hot')
-    plt.show()
-
+    s.sendall('EOF'.encode())
+    s.close()   
     env.close()

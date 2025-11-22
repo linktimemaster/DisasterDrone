@@ -56,8 +56,8 @@ class NewCA(CtrlAviary):
         color_gray = [0.74, 0.74, 0.74, 1]
 
 
-        normalBuilding = OBJModel("../../assets/building.obj", self.CLIENT, meshScale=scale, color=color_gray)
-        brokenBuilding = OBJModel("../../assets/building_broken.obj", self.CLIENT, meshScale=scale, color=color_gray)
+        normalBuilding = OBJModel("/assets/building.obj", self.CLIENT, meshScale=scale, color=color_gray)
+        brokenBuilding = OBJModel("/assets/building_broken.obj", self.CLIENT, meshScale=scale, color=color_gray)
 
         for i in range(-3, 4):
             for j in range(-3, 4):
@@ -128,13 +128,13 @@ def take_image(client, index):
 
 if __name__ == "__main__":
 
-    host = "0.0.0.0"
+    host = "127.0.0.1"
     port = 8080
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     class_names = ["normal", "broken"]
-    building_recognizer = tf.keras.models.load_model('../../Models/building_recognizer.keras')
+    building_recognizer = tf.keras.models.load_model('Models/kinda_working_building_recognizer.keras')
 
     num_drones = 1
     

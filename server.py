@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
-    host = "0.0.0.0"
+    host = "127.0.0.1"
     port = 8080
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -12,7 +12,10 @@ if __name__ == "__main__":
 
     while True:
         heatmap = np.zeros((7,7))
-        othermap = [[""] * 7]*7
+        # othermap = [[""] * 7]*7
+
+        othermap = np.empty([7, 7], dtype="S7")
+
         conn = s.accept()
         while True:
             data = conn[0].recv(1024)
@@ -33,8 +36,8 @@ if __name__ == "__main__":
                 othermap[x][y] = "normal"
 
         conn[0].close()
-        print(othermap)
-        print(heatmap)
+        # print(othermap)
+        # print(heatmap)
 
-        plt.imshow(heatmap, cmap='hot')
+        plt.colorbar(plt.imshow(heatmap, cmap='hot'))
         plt.show()

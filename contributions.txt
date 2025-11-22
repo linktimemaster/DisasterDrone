@@ -1,0 +1,10 @@
+Setup the simulation: Jonah
+Created the models: Jake
+Drone Trajectories: Jonah, Jake
+Setup Drone Camera: Jonah
+Model Setup (cnn.py): Jake
+Model Training (cnn.py): Jonah, Jake
+Object Importing(load_obj.py): Jonah, Jake
+City Environment: Jake
+Server: Jonah
+Heatmap Data Processing: Jake

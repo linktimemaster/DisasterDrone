@@ -255,18 +255,6 @@ if __name__ == "__main__":
         TARGET_POS[WP_UP + WP_BLINE + (WP_LINE*42)+ i, :] = line(tidx, start=(15,-15,6), end=(-15,-15,6))
         TARGET_YAW[WP_UP + WP_BLINE + (WP_LINE*42)+ i] = yaw_from_direction(Direction.N)
 
-    # prev_pos = TARGET_POS[WP_UP+WP_BLINE-1,:]
-    # for k in range(6):
-    #     flip = -1
-    #     if k % 2 == 0:
-    #         flip = 1
-    #     for j in range(6):
-    #         for i in range(WP_LINE):
-    #             tidx = i / WP_LINE
-    #             TARGET_POS[WP_UP+WP_BLINE+(WP_LINE*(j+(k*6))) + i,:] = line(tidx, start=prev_pos, end=np.subtract(prev_pos,(flip*j*5,k*5,0)))
-    #             TARGET_YAW[WP_UP+WP_BLINE+(WP_LINE*(j+(k*6))) + i] = yaw_from_direction(Direction.N)
-    #         prev_pos = TARGET_POS[WP_UP+WP_BLINE + (WP_LINE*(j+(k*6))) + i,:]
-
 
     #Sprial Building Trajectory
 
@@ -328,7 +316,7 @@ if __name__ == "__main__":
 
     s.connect((host,port))
 
-    for i in range(0, int(300*env.CTRL_FREQ)):
+    for i in range(0, int(330*env.CTRL_FREQ)):
         obs, reward, terminated, truncated, info = env.step(action)
 
         t_yaw = TARGET_YAW[wp_counters[0]]

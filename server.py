@@ -26,7 +26,7 @@ if __name__ == "__main__":
             x = int(dec_data[1])
             y = int(dec_data[2])
 
-            print(f"[{x}][{y}]: {name}")
+            # print(f"[{x}][{y}]: {name}")
             
             if name == "broken":
                 heatmap[x][y] = 1

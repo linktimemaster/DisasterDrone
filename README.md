@@ -33,7 +33,7 @@ Above you can find the link to the getting started guide for both Conda (CLI) or
 
 ```bash
 cd DisasterDrone
-conda env create -f environment.yml
+conda env create -f drones.yml
 conda activate drones
 ```
 
